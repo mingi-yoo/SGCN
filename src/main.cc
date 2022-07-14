@@ -140,7 +140,6 @@ void GetOption(int opt, F_PATH &f_path) {
 			log_info.dataset = result_v.front();
 			break;
 		case 't':
-			//f_path.tile_path = optarg;
 			data_info.n_tiles = stoi(optarg);
 			break;
 		case 'c':

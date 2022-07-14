@@ -36,7 +36,6 @@ struct F_PATH {
 	string ini;
 	string a_data;
 	string xw_data;
-	string tile_path;
 	string csv_path;
 	string davc_path;
 };
