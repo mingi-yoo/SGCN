@@ -56,6 +56,13 @@ void Memory::ConsumeTransaction() {
 	}
 }
 
+bool Memory::WillAcceptTransaction() {
+	if (tq.size() < REQUEST_LIMIT)
+		return true;
+	else
+		return false;
+}
+
 void Memory::PrintStats() {
 	mem->PrintStats();
 }

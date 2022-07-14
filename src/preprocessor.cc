@@ -25,6 +25,9 @@ Preprocessor::Preprocessor(F_PATH &f_path) {
 	ReadData(f_path.a_data, f_path.xw_data);
 	ReadDAVC(f_path.davc_path);
 
+	for (int i = 0; i < arch_info.n_of_engine; i++)
+		data_index.push_back(DataIndex());
+
 	// A preprocessing
 	LAC();
 	Tiling();
@@ -221,14 +224,12 @@ void Preprocessor::LAC() {
 	// each of engines has a csr of subgraph.
 	vector<vector<int>> row_ptr_lac;
 	vector<vector<int>> col_idx_lac;
-+
+
 	// initialize
 	int *edge_acm = new int[n];
 	for (int i = 0; i < n; i++) {
 		row_ptr_lac.push_back(vector<int>(1));
 		col_idx_lac.push_back(vector<int>());
-		DataIndex d;
-		data_index.push_back(d);
 		edge_acm[i] = 0;
 	}
 
@@ -242,11 +243,7 @@ void Preprocessor::LAC() {
 			col_idx_lac[lac_idx].push_back(col_idx_origin[j]);
 	}
 
-	// Calculate address & zero row
-	// Address will be recalculated.
-	uint64_t val_addr_start = 0;
-	uint64_t col_addr_start = 0;
-	uint64_t row_addr_start = 0;
+	// Calculate zero row
 
 	for (int i = 0; i < n; i++) {
 		int zero = 0;
@@ -256,18 +253,8 @@ void Preprocessor::LAC() {
 				zero++;
 		}
 		data_index[i].zero_row = zero;
-		data_index[i].value_addr_start = val_addr_start;
-		data_index[i].row_addr_start = row_addr_start;
-		data_index[i].col_addr_start = col_addr_start;
 		data_index[i].total_write = (row_ptr_lac[i].size() - 1 - zero) * (data_info.w_w / CACHE_LINE_COUNT);
 		
-		row_addr_start += ((row_ptr_lac[i].size() / CACHE_LINE_COUNT) + 1) * CACHE_LINE_BYTE;
-		col_addr_start += ((col_idx_lac[i].size() / CACHE_LINE_COUNT) + 1) * CACHE_LINE_BYTE;
-		val_addr_start += ((col_idx_lac[i].size() / CACHE_LINE_COUNT) + 1) * CACHE_LINE_BYTE;
-
-		data_index[i].value_addr_end = val_addr_start;
-		data_index[i].row_addr_end = row_addr_start;
-		data_index[i].col_addr_end = col_addr_start;
 	}
 
 	row_ptr = row_ptr_lac;
@@ -276,9 +263,9 @@ void Preprocessor::LAC() {
 	delete [] edge_acm;
 }
 
-void Preprocessor::Tiling(string tile_path) {
+void Preprocessor::Tiling() {
 	// it will process only tile file exist.
-	if (tile_path != "" || data_info.n_tiles > 1) {
+	if (data_info.n_tiles > 1) {
 		// this process is next step of LAC()
 		vector<vector<int>> row_ptr_tiled;
 		vector<vector<int>> col_idx_tiled;
@@ -296,33 +283,11 @@ void Preprocessor::Tiling(string tile_path) {
 		int t_acm = 0;
 		vector<int> t_unit;
 
-		if (tile_path != "") {
-			ifstream t_file(tile_path);
-			if (t_file.is_open()) {
-				string line, temp;
-				string tile_log = "";
-				getline(t_file, line);
-				stringstream ss(line);
-
-				while (getline(ss, temp, ' ')) {
-					tile_log += temp;
-					t_acm += stoi(temp);
-					t_unit.push_back(t_acm);
-				}
-
-				log_info.tiling_info = tile_log;
-			}
-			else
-				throw invalid_argument("Cannot open tile file");
+		for (int i = 0; i < data_info.n_tiles; i++) {
+			t_acm += 1;
+			t_unit.push_back(t_acm);
+			log_info.tiling_info = to_string(t_acm);
 		}
-		else if (data_info.n_tiles > 1) {
-			for (int i = 0; i < data_info.n_tiles; i++) {
-				t_acm += 1;
-				t_unit.push_back(t_acm);
-				log_info.tiling_info = to_string(t_acm);
-			}
-		}
-		
 
 		// for checking tile index, calculate tile unit(unit_v).
 		int unit_v = ceil((float)data_info.a_w / t_acm);
@@ -391,18 +356,7 @@ void Preprocessor::Tiling(string tile_path) {
 					zero++;
 			}
 			data_index[i].zero_row = zero;
-			data_index[i].value_addr_start = val_addr_start;
-			data_index[i].row_addr_start = row_addr_start;
-			data_index[i].col_addr_start = col_addr_start;
 			data_index[i].total_write = (row_ptr_tiled[i].size() - 1 - zero) * (data_info.w_w / CACHE_LINE_COUNT);
-
-			row_addr_start += ((row_ptr_tiled[i].size() / CACHE_LINE_COUNT) + 1) * CACHE_LINE_BYTE;
-			col_addr_start += ((col_idx_tiled[i].size() / CACHE_LINE_COUNT) + 1) * CACHE_LINE_BYTE;
-			val_addr_start += ((col_idx_tiled[i].size() / CACHE_LINE_COUNT) + 1) * CACHE_LINE_BYTE;
-
-			data_index[i].value_addr_end = val_addr_start;
-			data_index[i].row_addr_end = row_addr_start;
-			data_index[i].col_addr_end = col_addr_start;
 		}
 
 		row_ptr.clear();
@@ -430,78 +384,28 @@ void Preprocessor::Tiling(string tile_path) {
 
 void Preprocessor::TransXW() {
 	if (arch_info.mode == X_CMP) {
-		// TODO : extend to do block over 2 * cache line
-		// x_unit is compression unit that hopefully in cache line.
-		int x_blocks = ceil((float)data_info.w_w / arch_info.x_unit);
-		arch_info.urb = ceil((float)arch_info.x_unit / CACHE_LINE_COUNT);
-		arch_info.bf = x_blocks;
+		for (int i = 0; i < data_info.x_h; i++) {
+			int count = ceil((float)arch_info.x_unit / 32);
+			for (int j = 1; j <= data_info.x_w; j++) {
+				if (j % CACHE_LINE_COUNT == 0) {
+					if (count == 0)
+						xw_of_idx[i].push_back(0);
+					else
+						xw_of_idx[i].push_back(1);
 
-		// because compression unit is not multiple of cache line, there is a penalty of write.
-		// so, recalculate total write count.
-		total_write_blk = (data_info.w_w / arch_info.x_unit) * arch_info.urb;
-		total_write_blk += ceil((float)(data_info.w_w - (data_info.w_w / arch_info.x_unit) * arch_info.x_unit) / CACHE_LINE_COUNT);
-
-		total_write /= (data_info.w_w / CACHE_LINE_COUNT);
-		total_write *= total_write_blk;
-
-		// check xw x_block -> row -> column order
-		int of_acm = 0;
-		int th = arch_info.urb / 2;
-		for (int i = 0; i < x_blocks; i++) {
-			xw_of_idx.push_back(vector<int> ());
-			for (int j = 0; j < data_info.x_h; j++) {
-				int x_acm = 0;
-				for (int k = i*arch_info.x_unit; k < (i+1)*arch_info.x_unit && k < data_info.w_w; k++) {
-					if (xw[j][k] != 0) 
-						x_acm++;
+					if (j % arch_info.x_unit == 0)
+						count = ceil((float)arch_info.x_unit / 32);
+					else
+						count = 0;
 				}
-				// if xw cannot compress in cache line, then need to fragment
-				if (x_acm > CACHE_LINE_COUNT * th) {
-					xw_of_idx[i].push_back(of_acm);
-					of_acm += (x_acm - (CACHE_LINE_COUNT * th) + th);
-				}
-				else {
-					xw_of_idx[i].push_back(-1);
-				}
+				if (xw[i][j] != 0)
+					count++;
 			}
 		}
-		// store total number of elements that is in fragmantation
-		data_info.num_frag = of_acm;
 	}
 	else if (arch_info.mode == MAT)
 		data_info.num_frag = 0;
-	else if (arch_info.mode == CSR) {
-		xw_of_idx.push_back(vector<int> (1));
-		uint64_t x_acm = 0;
-		for (int i = 0; i < data_info.x_h; i++) {
-			for (int j = 0; j < data_info.w_w; j++) {
-				if (xw[i][j] != 0)
-					x_acm++;
-			}
-			xw_of_idx[0].push_back(x_acm);
-		}
-	}
-	else if (arch_info.mode == X_FULL_CMP) {
-		//int bm_size = data_info.w_w / 32;
-		int bm_size = 0;
-		for (int i = 0; i < data_info.x_h; i++) {
-			xw_of_idx.push_back(vector<int> ());
-			int x_acm = bm_size;
-			int x_idx = -1;
-			for (int j = 0; j < data_info.w_w; j++) {
-				if (xw[i][j] != 0) {
-					x_acm++;
-					x_idx = j;
-				}
-				if (x_acm == CACHE_LINE_COUNT && j != data_info.w_w - 1) {
-					xw_of_idx[i].push_back(x_idx);
-					x_acm = 0;
-				}
-			}
-			
-			xw_of_idx[i].push_back(x_idx);
-		}
-	}
+
 	// clear xw_mat vector
 	vector<vector<int>>().swap(xw);
 }
@@ -509,58 +413,46 @@ void Preprocessor::TransXW() {
 void Preprocessor::AddressMapping() {
 	//Address Mapping for serial address
 	//Address order: value -> row -> column -> xw (non-frag) -> xw (frag) -> axw
-	arch_info.a_row_addr_start = data_index.back().value_addr_end;
+	uint64_t address = 0;
+	vector<int> row_frags;
+	vector<int> col_frags;
+
 	for (int i = 0; i < arch_info.n_of_engine; i++) {
-		data_index[i].row_addr_start += arch_info.a_row_addr_start;
-		data_index[i].row_addr_end += arch_info.a_row_addr_start;
+		int row_frag = ceil((float)row_ptr[i].size()/CACHE_LINE_COUNT);
+		int col_frag = ceil((float)col_idx[i].size()/CACHE_LINE_COUNT);
+		row_frags.push_back(row_frag);
+		col_frags.push_back(col_frag);
 	}
 
-	arch_info.a_col_addr_start = data_index.back().row_addr_end;
-	for (int i = 0; i < arch_info.n_of_engine; i++) {
-		data_index[i].col_addr_start += arch_info.a_col_addr_start;
-		data_index[i].col_addr_end += arch_info.a_col_addr_start;
+	// value address
+	arch_info.d_value_addr_start = address;
+	for (int j = 0; j < arch_info.n_of_engine; j++) {
+		data_index[i].value_addr_start = address;
+		address += col_frags[i] * CACHE_LINE_BYTE;
+		data_index[i].value_addr_end = address;
 	}
-	
-	if (arch_info.mode == X_CMP || arch_info.mode == MAT) {
-		arch_info.xw_ele_addr_start = data_index.back().col_addr_end;
 
-		arch_info.axw_addr_start = arch_info.xw_ele_addr_start;
-		uint64_t temp = (uint64_t)data_info.x_h * arch_info.bf;
-		temp *= (uint64_t)arch_info.urb * CACHE_LINE_BYTE;
-		arch_info.axw_addr_start += temp;
+	// row address
+	arch_info.a_row_addr_start = address;
+	for (int j = 0; j < arch_info.n_of_engine; j++) {
+		data_index[i].row_addr_start = address;
+		address += row_frags[i] * CACHE_LINE_BYTE;
+		data_index[i].row_addr_end = address;
 	}
-	else if (arch_info.mode == CSR) {
-		arch_info.xw_value_addr_start = data_index.back().col_addr_end;
 
-		arch_info.xw_row_addr_start = arch_info.xw_value_addr_start;
-		uint64_t temp = (uint64_t)(xw_of_idx[0].back() / CACHE_LINE_COUNT) * CACHE_LINE_BYTE;
-		arch_info.xw_row_addr_start += temp + CACHE_LINE_BYTE;
-
-		arch_info.xw_col_addr_start = arch_info.xw_row_addr_start;
-		temp = (uint64_t)(xw_of_idx[0].size() / CACHE_LINE_COUNT) * CACHE_LINE_BYTE;
-		arch_info.xw_col_addr_start += temp + CACHE_LINE_BYTE;
-
-		arch_info.axw_addr_start = arch_info.xw_col_addr_start;
-		temp = (uint64_t)(xw_of_idx[0].back() / CACHE_LINE_COUNT) * CACHE_LINE_BYTE;
-		arch_info.axw_addr_start += temp + CACHE_LINE_BYTE;
+	// col address
+	arch_info.a_col_addr_start = address;
+	for (int j = 0; j < arch_info.n_of_engine; j++) {
+		data_index[i].col_addr_start = address;
+		address += col_frags[i] * CACHE_LINE_BYTE;
+		data_index[i].col_addr_end = address;
 	}
-	else if (arch_info.mode == X_FULL_CMP) {
-		
-		arch_info.xw_ele_addr_start = data_index.back().col_addr_end;
 
-	
-		arch_info.axw_addr_start = arch_info.xw_ele_addr_start;
-		uint64_t temp = (uint64_t)data_info.x_h * data_info.w_w;
-		temp /= CACHE_LINE_BIT;
-		arch_info.axw_addr_start += temp;
 
-		temp = (uint64_t)data_info.x_h * arch_info.bf;
-		temp *= (uint64_t)arch_info.urb * CACHE_LINE_BYTE;
-		arch_info.axw_addr_start += temp;
-		
-		//arch_info.axw_addr_start = 0x100000000;
-	}
-	//arch_info.axw_addr_start = 0x5000000000000;
+	// xw, axw address
+	arch_info.xw_ele_addr_start = address;
+	address += (uint64_t)data_info.x_h * (data_info.x_w / CACHE_LINE_COUNT) * CACHE_LINE_BYTE;
+	arch_info.axw_addr_start = address;
 }
 
 void Preprocessor::PrintStatus() {

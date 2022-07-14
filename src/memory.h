@@ -21,6 +21,7 @@ public:
 	~Memory();
 	void UpdateCycle();
 	void AddTransaction(Transaction t);
+	bool WillAcceptTransaction();
 	void ConsumeTransaction();
 	void PrintStats();
 	R_TYPE GetGraph(int id);
