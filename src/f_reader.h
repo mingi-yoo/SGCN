@@ -36,7 +36,7 @@ public:
 	void EnterFtoList(EdgeInfo ei);
 	void ReadNext(int id);
 	void FeatureReceive();
-	vector<uint64_t> PassFtoSIMD(int id);
+	int PassFtoSIMD(int id);
 private:
 	Memory* mem;
 	Cache* cah;
@@ -47,7 +47,7 @@ private:
 	vector<queue<EdgeInfo>> pq;
 	set<uint64_t> requested;
 	
-	vector<vector<vector<uint64_t>>> tbp; // to be passed
+	vector<queue<uint64_t>> fq;
 
 	int f_requested;
 

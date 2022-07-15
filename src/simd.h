@@ -7,12 +7,13 @@
 using namespace std;
 
 struct SIMD_STAT {
+	uint64_t axw_addr_start;
 	int cur_row_idx;
-	int cur_col_idx;
 	int cur_v_fold;
 
-	int cur_get_f;
 	int cur_f;
+
+	int past_f;
 
 	bool simd_end;
 };
@@ -23,10 +24,11 @@ public:
 	SIMD(int id, Memory* mem);
 	~SIMD();
 
-	void GetFeature(vector<uint64_t> f);
+	void GetFeature(int f);
 private:
 	int id;
 	Memory* mem;
+	queue<uint64_t> wq;
 	
 	uint64_t GetAddress();
 };

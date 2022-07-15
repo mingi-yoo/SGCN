@@ -5,7 +5,7 @@ using namespace std;
 vector<vector<int>> row_ptr;
 vector<vector<int>> col_idx;
 
-vector<vector<int>> xw_of_idx;
+vector<vector<uint64_t>> x_to_addr;
 
 ArchInfo arch_info;
 DataInfo data_info;
@@ -34,6 +34,9 @@ Preprocessor::Preprocessor(F_PATH &f_path) {
 
 	for (int i = 0; i < data_index.size(); i++)
 		total_write += data_index[i].total_write;
+
+	for (int i = 0; i < data_info.x_h; i++)
+		x_to_addr.push_back(vector<uint64_t> ());
 
 	// X preprocessing
 	TransXW();
@@ -383,15 +386,19 @@ void Preprocessor::Tiling() {
 }
 
 void Preprocessor::TransXW() {
+	int unit = ceil((float)data_info.x_w / CACHE_LINE_COUNT);
+
 	if (arch_info.mode == X_CMP) {
+		arch_info.urb = ceil((float)arch_info.x_unit / CACHE_LINE_COUNT);
 		for (int i = 0; i < data_info.x_h; i++) {
 			int count = ceil((float)arch_info.x_unit / 32);
 			for (int j = 1; j <= data_info.x_w; j++) {
 				if (j % CACHE_LINE_COUNT == 0) {
-					if (count == 0)
-						xw_of_idx[i].push_back(0);
+					if (count == 0) {
+						x_to_addr[i].push_back(0);
+					}
 					else
-						xw_of_idx[i].push_back(1);
+						x_to_addr[i].push_back(1);
 
 					if (j % arch_info.x_unit == 0)
 						count = ceil((float)arch_info.x_unit / 32);
@@ -403,8 +410,13 @@ void Preprocessor::TransXW() {
 			}
 		}
 	}
-	else if (arch_info.mode == MAT)
-		data_info.num_frag = 0;
+	else if (arch_info.mode == MAT) {
+		for (int i = 0; i < data_info.x_h; i++) {
+			for (int j = 0; j < unit; j++) {
+				x_to_addr[i].push_back(1);
+			}
+		}
+	}
 
 	// clear xw_mat vector
 	vector<vector<int>>().swap(xw);
@@ -448,11 +460,25 @@ void Preprocessor::AddressMapping() {
 		data_index[i].col_addr_end = address;
 	}
 
-
 	// xw, axw address
 	arch_info.xw_ele_addr_start = address;
 	address += (uint64_t)data_info.x_h * (data_info.x_w / CACHE_LINE_COUNT) * CACHE_LINE_BYTE;
 	arch_info.axw_addr_start = address;
+
+	// mapping x address
+	address = arch_info.xw_ele_addr_start;
+	int unit = ceil((float)data_info.x_w/CACHE_LINE_COUNT);
+	for (int i = 0; i < arch_info.bf; i++) {
+		for (int j = 0; j < data_info.x_h; j++) {
+			for (int k = 0; k < arch_info.urb; k++) {
+				int row = j;
+				int col = i * arch_info.urb + k;
+				if (x_to_addr[row][col] == 1)
+					x_to_addr[row][col]=address;
+				address += CACHE_LINE_BYTE;
+			}
+		}
+	}
 }
 
 void Preprocessor::PrintStatus() {

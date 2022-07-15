@@ -52,11 +52,6 @@ GraphReader::GraphReader(int id, Memory* mem) {
 	// it needs for v_fold
 	g_pass_count = 0;
 
-	// they need request limit.
-	v_requested = 0;
-	e_requested = 0;
-	val_requested = 0;
-
 	// initialize GR_FLAG
 	// they need for stop passing
 	grf.v_req_over = false;
@@ -81,7 +76,7 @@ GraphReader::GraphReader(int id, Memory* mem) {
 GraphReader::~GraphReader() {}
 
 void GraphReader::VertexRequest() {
-	if (v_requested < REQUEST_LIMIT) {
+	if (mem->WillAcceptTransaction()) {
 		// Request to memory
 		mem->AddTransaction({grs.next_v_addr, READ});
 
@@ -93,13 +88,11 @@ void GraphReader::VertexRequest() {
 			if (v_req_count == arch_info.bf) 
 				grf.v_req_over = true;
 		}
-		
-		v_requested++;
 	}
 }	
 
 void GraphReader::EdgeRequest() {
-	if (e_requested < REQUEST_LIMIT && val_requested < REQUEST_LIMIT) {
+	if (mem->WillAcceptTransaction()) {
 		// Request to memory
 		mem->AddTransaction({grs.next_e_addr, READ});
 		if (arch_info.gnn_mode == GCN) {
@@ -107,7 +100,6 @@ void GraphReader::EdgeRequest() {
 			grs.next_val_addr += CACHE_LINE_BYTE;
 		}
 	
-
 		grs.next_e_addr += CACHE_LINE_BYTE;
 		
 		// we only check the col_idx request address, because value address follows automatically
@@ -120,10 +112,6 @@ void GraphReader::EdgeRequest() {
 			if (e_req_count == arch_info.bf)
 				grf.e_req_over = true;
 		}
-		
-		e_requested++;
-		if (arch_info.gnn_mode == GCN)
-			val_requested++;
 	}
 }
 
@@ -134,7 +122,6 @@ void GraphReader::GraphReceive() {
 	R_TYPE reci = mem->GetGraph(id);
 
 	if (reci == Row) {
-		v_requested--;
 		if (grs.row_end_idx == row_ptr[id].size()) {
 			// if end index is the last of row_ptr, then set overflow
 			grs.row_overflow++;

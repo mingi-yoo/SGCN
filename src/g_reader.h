@@ -73,11 +73,6 @@ private:
 	// for checking graph pass end
 	int g_pass_count;
 
-	// for limiting prefetch
-	int v_requested;
-	int e_requested;
-	int val_requested;
-
 };
 
 #endif
