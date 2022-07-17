@@ -13,7 +13,6 @@ extern vector<vector<int>> col_idx;
 extern int total_write_blk;
 extern uint64_t total_write;
 
-int cnt;
 
 SIMD::SIMD(int id, Memory* mem) {
 	this->id = id;
@@ -23,6 +22,7 @@ SIMD::SIMD(int id, Memory* mem) {
 	ss.axw_addr_start += (uint64_t)ceil((float)data_info.a_h/arch_info.n_of_engine) * id * arch_info.bf * arch_info.urb * CACHE_LINE_BYTE;
 	ss.cur_row_idx = 0;
 	ss.cur_v_fold = 0;
+	ss.cnt = 0;
 
 	ss.past_f = -1;
 
@@ -33,31 +33,33 @@ SIMD::~SIMD() {}
 
 void SIMD::GetFeature(int f) {
 	if (f == 0) {
-		uint64_t address = GetAddress();
-		wq.push(address);
-		ss.cur_v_fold++;
-	}
-	else if (f == 1) {
-		if (ss.past_f == 0) {
-			if (ss.cur_get_f < arch_info.urb) {
-				while (ss.cur_v_fold < arch_info.urb) {
-					uint64_t address = GetAddress();
-					wq.push(address);
-					ss.cur_v_fold++;
-				}
-			}
-			ss.cur_v_fold = 0;
-			ss.cur_row_idx++;
+		for (int i = 0; i < arch_info.urb; i++) {
+			uint64_t address = GetAddress();
+			wq.push(address);
+			ss.cur_v_fold++;
 		}
-		
+		ss.cur_v_fold = 0;
+		ss.cur_row_idx++;
 	}
-	ss.past_f = f;
+}
+
+void SIMD::Write() {
+	if (wq.empty() || !mem->WillAcceptTransaction())
+		return;
+
+	uint64_t address = wq.front();
+	wq.pop();
+	mem->AddTransaction({address, WRITE});
 }
 
 uint64_t SIMD::GetAddress() {
 	uint64_t address = ss.axw_addr_start;
-	address += cnt * CACHE_LINE_BYTE;
-	cnt++;
-	
+	address += ss.cnt * CACHE_LINE_BYTE;
+	ss.cnt++;
+
 	return address;
+}
+
+void SIMD::Print() {
+	cout<<"ID: "<<id<<", total write: "<<ss.cnt<<endl;
 }

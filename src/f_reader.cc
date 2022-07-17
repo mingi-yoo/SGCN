@@ -19,6 +19,8 @@ extern int total_write_blk;
 
 int f_pass;
 
+ofstream test("test.txt");
+
 FeatureReader::FeatureReader(Memory* mem, Cache* cah) {
 	this->mem = mem;
 	this->cah = cah;
@@ -86,6 +88,15 @@ void FeatureReader::ConsumePendingQ(int id) {
 	frs[id].pq_read_need = false;
 
 	// cout<<"ID: "<<id<<endl;
+	f_pass++;
+
+	if (f_pass == data_info.num_e * arch_info.bf) {
+		cout<<"ALL OF EDGE COMPLETE: "<<f_pass<<endl;
+		for (int i = 0; i < arch_info.n_of_engine; i++)
+			cout<<pq[i].size()<<" ";
+		cout<<endl;
+	}
+		
 }
 
 void FeatureReader::ReadNext(int id) {
@@ -101,22 +112,31 @@ void FeatureReader::ReadNext(int id) {
 	// pass = {current col index, (feature address to get|current col index if feature alread exist), is_last}
 	if (mode == X_CMP) {
 		uint64_t f_addr = ReturnAddress(frs[id].cur_f.dst, frs[id].cur_f.cur_col_idx, frs[id].cur_f.v_fold, 0);
-		if (f_addr != 0) {
-			if (!cah->Access(f_addr) && (requested.find(f_addr) == requested.end())) {
-				requested.insert(f_addr);
-				mem->AddTransaction({f_addr, READ});
-			}
-			fq[id].push(f_addr);
+
+		if (!cah->Access(f_addr) && (requested.find(f_addr) == requested.end())) {
+			requested.insert(f_addr);
+			mem->AddTransaction({f_addr, READ});
 		}
 
-		if ((frs[id].cur_f.cur_col_idx != arch_info.urb - 1)&& f_addr != 0)
-			frs[id].cur_col_idx++;
-		else
-			frs[id].pq_read_need = true;
+		if (cah->Access(f_addr))
+			fq[id].push(1);
 		
-		if (frs[id].cur_f.is_last)
-			fq[id].push(0);	
-
+		if (frs[id].cur_f.cur_col_idx != arch_info.urb - 1) {
+			frs[id].cur_f.cur_col_idx++;
+			uint64_t next_f_addr = ReturnAddress(frs[id].cur_f.dst, frs[id].cur_f.cur_col_idx, frs[id].cur_f.v_fold, 0);
+			if (next_f_addr == 0) {
+				frs[id].pq_read_need = true;
+				frs[id].cur_f.cur_col_idx = arch_info.urb - 1; 
+				if (frs[id].cur_f.is_last)
+					fq[id].push(0);	
+			}
+		}
+		else {
+			frs[id].pq_read_need = true;
+			if (frs[id].cur_f.is_last)
+				fq[id].push(0);	
+		}
+			
 	}
 	else if (mode == MAT) {
 		uint64_t f_addr = ReturnAddress(frs[id].cur_f.dst, frs[id].cur_f.cur_col_idx, frs[id].cur_f.v_fold, 0);
@@ -127,13 +147,13 @@ void FeatureReader::ReadNext(int id) {
 		fq[id].push(f_addr);
 
 		if (frs[id].cur_f.cur_col_idx != arch_info.urb - 1)
-			frs[id].cur_col_idx++;
+			frs[id].cur_f.cur_col_idx++;
 		else {
 			frs[id].pq_read_need = true;
+			if (frs[id].cur_f.is_last)
+				fq[id].push(0);	
 		}
 
-		if (frs[id].cur_f.is_last)
-			fq[id].push(0);	
 	}
 }
 
@@ -161,6 +181,8 @@ int FeatureReader::PassFtoSIMD(int id) {
 		return -1;
 
 	uint64_t next = fq[id].front();
+	//cout<<"ID: "<<id<<", NEXT: "<<next<<endl;
+	
 	if (cah->Access(next)) {
 		fq[id].pop();
 	}
@@ -172,7 +194,7 @@ int FeatureReader::PassFtoSIMD(int id) {
 		return -1;
 	}
 
-	if (fq[id].front() == 0) {
+	if (!fq[id].empty() && fq[id].front() == 0) {
 		fq[id].pop();
 		return 0;
 	}

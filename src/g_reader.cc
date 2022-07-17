@@ -137,7 +137,6 @@ void GraphReader::GraphReceive() {
 		}
 	}
 	else if (reci == Column) {
-		e_requested--;
 		if (grs.col_end_idx == col_idx[id].size()) {
 			// if end index is the last of row_ptr, then set overflow
 			grs.col_overflow++;
@@ -153,7 +152,6 @@ void GraphReader::GraphReceive() {
 		}
 	}
 	else if (reci == Value) {
-		val_requested--;
 		if (grs.val_end_idx == col_idx[id].size()) {
 			// if end index is the last of row_ptr, then set overflow
 			grs.val_overflow++;
@@ -170,8 +168,11 @@ void GraphReader::GraphReceive() {
 	}
 
 	// if all of graph is received, then turn on the receive over flag
-	if (grf.v_reci_over && grf.e_reci_over && grf.val_reci_over)
-		grf.reci_over = true;
+	// if (grf.v_reci_over && grf.e_reci_over && grf.val_reci_over) {
+	// 	grf.reci_over = true;
+	// 	cout<<"id: "<<id<<" g read over"<<endl;
+	// }
+		
 }
 
 EdgeInfo GraphReader::NextFeature() {

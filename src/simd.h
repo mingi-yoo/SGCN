@@ -14,6 +14,7 @@ struct SIMD_STAT {
 	int cur_f;
 
 	int past_f;
+	int cnt;
 
 	bool simd_end;
 };
@@ -25,6 +26,8 @@ public:
 	~SIMD();
 
 	void GetFeature(int f);
+	void Write();
+	void Print();
 private:
 	int id;
 	Memory* mem;

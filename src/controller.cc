@@ -62,18 +62,13 @@ uint64_t Controller::GCNInference(int f_mode) {
 				if (ei.dst != -1) 
 					fr->EnterFtoList(ei);
 			}	
-			vector<uint64_t> pass;
+			int pass;
 
 			fr->ReadNext(i);
 			pass = fr->PassFtoSIMD(i);
 
-			if (!pass.empty()) {
-				f_pass++;
-				si[i]->GetFeature(pass);
-
-				//cout<<"F PASS: "<<f_pass<<endl;
-				//cout<<pass[0]<<", "<<pass[1]<<", "<<pass[2]<<", "<<pass[3]<<endl;
-			}
+			si[i]->GetFeature(pass);
+			si[i]->Write();
 		}
 
 		fr->FeatureReceive();
@@ -91,6 +86,9 @@ uint64_t Controller::GCNInference(int f_mode) {
 			break;
 		
 	}
+
+	for (int i = 0; i < arch_info.n_of_engine; i++)
+		si[i]->Print();
 	
 	return cycle;
 }

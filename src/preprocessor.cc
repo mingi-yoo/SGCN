@@ -184,7 +184,7 @@ void Preprocessor::ReadData(string a_data, string xw_data) {
 	data_info.x_w = data_info.w_h;
 
 	// urb unit is cache line. (1 urb = read C(16) elements)
-	arch_info.urb = ceil((float)data_info.w_w / arch_info.bf / CACHE_LINE_COUNT);
+	arch_info.urb = ceil((float)data_info.x_w / arch_info.bf / CACHE_LINE_COUNT);
 	// log feature width and urb
 	log_info.feature_length = data_info.w_w;
 	log_info.urb = arch_info.urb;	
@@ -390,20 +390,20 @@ void Preprocessor::TransXW() {
 
 	if (arch_info.mode == X_CMP) {
 		arch_info.urb = ceil((float)arch_info.x_unit / CACHE_LINE_COUNT);
+		arch_info.bf = ceil((float)data_info.x_w / arch_info.urb / CACHE_LINE_COUNT);
 		for (int i = 0; i < data_info.x_h; i++) {
 			int count = ceil((float)arch_info.x_unit / 32);
 			for (int j = 1; j <= data_info.x_w; j++) {
-				if (j % CACHE_LINE_COUNT == 0) {
-					if (count == 0) {
-						x_to_addr[i].push_back(0);
+				if (j % (arch_info.urb * CACHE_LINE_COUNT) == 0) {
+					for (int k = 0; k < arch_info.urb; k++) {
+						if (count > 0)
+							x_to_addr[i].push_back(1);
+						else
+							x_to_addr[i].push_back(0);
+						
+						count -= CACHE_LINE_COUNT;
 					}
-					else
-						x_to_addr[i].push_back(1);
-
-					if (j % arch_info.x_unit == 0)
-						count = ceil((float)arch_info.x_unit / 32);
-					else
-						count = 0;
+					count = ceil((float)arch_info.x_unit / 32);
 				}
 				if (xw[i][j] != 0)
 					count++;
@@ -438,7 +438,7 @@ void Preprocessor::AddressMapping() {
 
 	// value address
 	arch_info.d_value_addr_start = address;
-	for (int j = 0; j < arch_info.n_of_engine; j++) {
+	for (int i = 0; i < arch_info.n_of_engine; i++) {
 		data_index[i].value_addr_start = address;
 		address += col_frags[i] * CACHE_LINE_BYTE;
 		data_index[i].value_addr_end = address;
@@ -446,7 +446,7 @@ void Preprocessor::AddressMapping() {
 
 	// row address
 	arch_info.a_row_addr_start = address;
-	for (int j = 0; j < arch_info.n_of_engine; j++) {
+	for (int i = 0; i < arch_info.n_of_engine; i++) {
 		data_index[i].row_addr_start = address;
 		address += row_frags[i] * CACHE_LINE_BYTE;
 		data_index[i].row_addr_end = address;
@@ -454,7 +454,7 @@ void Preprocessor::AddressMapping() {
 
 	// col address
 	arch_info.a_col_addr_start = address;
-	for (int j = 0; j < arch_info.n_of_engine; j++) {
+	for (int i = 0; i < arch_info.n_of_engine; i++) {
 		data_index[i].col_addr_start = address;
 		address += col_frags[i] * CACHE_LINE_BYTE;
 		data_index[i].col_addr_end = address;
@@ -479,6 +479,12 @@ void Preprocessor::AddressMapping() {
 			}
 		}
 	}
+
+	// for (int i = 0; i < data_info.x_h; i++) {
+	// 	for (int j = 0; j < data_info.x_w / CACHE_LINE_COUNT; j++)
+	// 		cout<<hex<<x_to_addr[i][j]<<" ";
+	// 	cout<<endl;
+	// }
 }
 
 void Preprocessor::PrintStatus() {

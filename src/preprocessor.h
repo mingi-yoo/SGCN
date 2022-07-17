@@ -18,8 +18,9 @@ private:
 	void ReadData(string a_data, string xw_data);
 	void ReadDAVC(string davc_path);
 	void LAC();
-	void Tiling(string tile_path);
+	void Tiling();
 	void TransXW();
+	void AddressMapping();
 
 	void ParseIni(string csv_path);
 	bool Contain(string name);

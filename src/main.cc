@@ -23,7 +23,6 @@ void GetOption(int opt, F_PATH &f_path);
 
 int main(int argc, char** argv) {
 	F_PATH f_path;
-	f_path.tile_path = "";
 	f_path.csv_path = "";
 	f_path.davc_path = "";
 
