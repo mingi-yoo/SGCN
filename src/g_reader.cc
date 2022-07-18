@@ -168,10 +168,10 @@ void GraphReader::GraphReceive() {
 	}
 
 	// if all of graph is received, then turn on the receive over flag
-	// if (grf.v_reci_over && grf.e_reci_over && grf.val_reci_over) {
-	// 	grf.reci_over = true;
+	if (grf.v_reci_over && grf.e_reci_over && grf.val_reci_over) {
+		grf.reci_over = true;
 	// 	cout<<"id: "<<id<<" g read over"<<endl;
-	// }
+	}
 		
 }
 

@@ -120,6 +120,8 @@ void FeatureReader::ReadNext(int id) {
 
 		if (cah->Access(f_addr))
 			fq[id].push(1);
+		else
+			fq[id].push(f_addr);
 		
 		if (frs[id].cur_f.cur_col_idx != arch_info.urb - 1) {
 			frs[id].cur_f.cur_col_idx++;
@@ -183,7 +185,7 @@ int FeatureReader::PassFtoSIMD(int id) {
 	uint64_t next = fq[id].front();
 	//cout<<"ID: "<<id<<", NEXT: "<<next<<endl;
 	
-	if (cah->Access(next)) {
+	if (next == 1 || cah->Access(next)) {
 		fq[id].pop();
 	}
 	else {
