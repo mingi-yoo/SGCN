@@ -268,6 +268,7 @@ void Preprocessor::LAC() {
 
 void Preprocessor::Tiling() {
 	// it will process only tile file exist.
+	log_info.tiling_info = to_string(data_info.n_tiles);
 	if (data_info.n_tiles > 1) {
 		// this process is next step of LAC()
 		vector<vector<int>> row_ptr_tiled;
@@ -289,7 +290,6 @@ void Preprocessor::Tiling() {
 		for (int i = 0; i < data_info.n_tiles; i++) {
 			t_acm += 1;
 			t_unit.push_back(t_acm);
-			log_info.tiling_info = to_string(t_acm);
 		}
 
 		// for checking tile index, calculate tile unit(unit_v).

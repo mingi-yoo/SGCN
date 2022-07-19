@@ -104,6 +104,7 @@ int main(int argc, char** argv) {
 			csv_out << log_info.urb << ",";
 			csv_out << log_info.bf << ",";
 			csv_out << log_info.cycle << ",";
+			csv_out << (log_info.g_access + log_info.f_ele_access + log_info.o_access) << ",";
 			csv_out << log_info.g_access << ",";
 			csv_out << log_info.f_frag_access << ",";
 			csv_out << (log_info.f_ele_access - log_info.f_frag_access) << ",";
