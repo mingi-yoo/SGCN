@@ -19,8 +19,6 @@ extern int total_write_blk;
 
 int f_pass;
 
-ofstream test("test.txt");
-
 FeatureReader::FeatureReader(Memory* mem, Cache* cah) {
 	this->mem = mem;
 	this->cah = cah;
