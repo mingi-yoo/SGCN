@@ -112,6 +112,8 @@ struct DataInfo {
 
 	int n_tiles;
 
+	int total_urb;
+
 	int num_e;
 	int num_v;
 
@@ -126,6 +128,7 @@ struct DataIndex {
 	uint64_t col_addr_start;
 	uint64_t col_addr_end;
 
+	int row;
 	int zero_row;
 	int total_write;
 };

@@ -128,7 +128,7 @@ void GraphReader::GraphReceive() {
 			grs.row_end_idx = 0;
 		}
 		grs.row_end_idx += CACHE_LINE_COUNT;
-		if (grs.row_end_idx > row_ptr[id].size()) {
+		if (grs.row_end_idx >= row_ptr[id].size()) {
 			// adjust the last index
 			grs.row_end_idx = row_ptr[id].size();
 			v_reci_count++;
@@ -143,7 +143,7 @@ void GraphReader::GraphReceive() {
 			grs.col_end_idx = 0;
 		}
 		grs.col_end_idx += CACHE_LINE_COUNT;
-		if (grs.col_end_idx > col_idx[id].size()) {
+		if (grs.col_end_idx >= col_idx[id].size()) {
 			// adjust the last index
 			grs.col_end_idx = col_idx[id].size();
 			e_reci_count++;
@@ -158,7 +158,7 @@ void GraphReader::GraphReceive() {
 			grs.val_end_idx = 0;
 		}
 		grs.val_end_idx += CACHE_LINE_COUNT;
-		if (grs.val_end_idx > col_idx[id].size()) {
+		if (grs.val_end_idx >= col_idx[id].size()) {
 			// adjust the last index
 			grs.val_end_idx = col_idx[id].size();
 			val_reci_count++;
@@ -170,7 +170,7 @@ void GraphReader::GraphReceive() {
 	// if all of graph is received, then turn on the receive over flag
 	if (grf.v_reci_over && grf.e_reci_over && grf.val_reci_over) {
 		grf.reci_over = true;
-	// 	cout<<"id: "<<id<<" g read over"<<endl;
+		cout<<"id: "<<id<<" g read over"<<endl;
 	}
 		
 }

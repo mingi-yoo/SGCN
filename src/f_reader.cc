@@ -124,6 +124,9 @@ void FeatureReader::ReadNext(int id) {
 			fq[id].push(f_addr);
 		
 		int cur_urb = frs[id].cur_f.v_fold * arch_info.urb + frs[id].cur_f.cur_col_idx;
+		// if (cur_urb > 16)
+		//  	cout<<"ID: "<<id<<", pq size: "<<pq[id].size()<<", fq size: "<<fq[id].size()<<endl;
+
 		if ((cur_urb != data_info.total_urb -1) && (frs[id].cur_f.cur_col_idx != arch_info.urb - 1)) {
 			frs[id].cur_f.cur_col_idx++;
 			uint64_t next_f_addr = ReturnAddress(frs[id].cur_f.dst, frs[id].cur_f.cur_col_idx, frs[id].cur_f.v_fold, 0);

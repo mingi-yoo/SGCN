@@ -32,8 +32,6 @@ Preprocessor::Preprocessor(F_PATH &f_path) {
 	LAC();
 	Tiling();
 
-	for (int i = 0; i < data_index.size(); i++)
-		total_write += data_index[i].total_write;
 
 	for (int i = 0; i < data_info.x_h; i++)
 		x_to_addr.push_back(vector<uint64_t> ());
@@ -41,6 +39,9 @@ Preprocessor::Preprocessor(F_PATH &f_path) {
 	// X preprocessing
 	TransXW();
 	AddressMapping();
+
+	for (int i = 0; i < data_index.size(); i++)
+		total_write += data_index[i].total_write;
 
 }
 
@@ -360,7 +361,7 @@ void Preprocessor::Tiling() {
 					// if there is vertex that has no edge, count up the zero row value.
 					zero++;
 			}
-			data_index[i].row = row_ptr_lac[i].size() - 1;
+			data_index[i].row = row_ptr_tiled[i].size() - 1;
 			data_index[i].zero_row = zero;
 			data_index[i].total_write = (row_ptr_tiled[i].size() - 1 - zero) * data_info.total_urb;
 		}
@@ -390,14 +391,20 @@ void Preprocessor::Tiling() {
 
 void Preprocessor::TransXW() {
 	if (arch_info.mode == X_CMP) {
-		data_info.tota_urb = ceil((float)data_info.x_w / arch_info.x_unit);
 		arch_info.urb = ceil((float)arch_info.x_unit / CACHE_LINE_COUNT);
-		arch_info.bf = ceil((float)data_info.tota_urb / arch_info.urb);
+		arch_info.bf = ceil((float)data_info.x_w / arch_info.x_unit);
+		data_info.total_urb = arch_info.bf * arch_info.urb;
+		
 		for (int i = 0; i < data_info.x_h; i++) {
 			int count = ceil((float)arch_info.x_unit / 32);
 			for (int j = 1; j <= data_info.x_w; j++) {
-				if (j % (arch_info.urb * CACHE_LINE_COUNT) == 0) {
-					for (int k = 0; k < arch_info.urb; k++) {
+				if (j % arch_info.x_unit == 0 || j == data_info.x_w) {
+					int cur_urb;
+					if (j == data_info.x_w)
+						cur_urb = data_info.total_urb - ((arch_info.bf-1) * arch_info.urb);
+					else
+						cur_urb = arch_info.urb;
+					for (int k = 0; k < cur_urb; k++) {
 						if (count > 0)
 							x_to_addr[i].push_back(1);
 						else
@@ -411,6 +418,8 @@ void Preprocessor::TransXW() {
 					count++;
 			}
 		}
+		for (int i = 0; i < arch_info.n_of_engine; i++)
+			data_index[i].total_write = (row_ptr[i].size() - 1 - data_index[i].zero_row) * data_info.total_urb;
 	}
 	else if (arch_info.mode == MAT) {
 		int unit = ceil((float)data_info.x_w / CACHE_LINE_COUNT);
@@ -465,7 +474,7 @@ void Preprocessor::AddressMapping() {
 
 	// xw, axw address
 	arch_info.xw_ele_addr_start = address;
-	address += (uint64_t)data_info.x_h * (data_info.x_w / CACHE_LINE_COUNT) * CACHE_LINE_BYTE;
+	address += (uint64_t)data_info.x_h * data_info.total_urb * CACHE_LINE_BYTE;
 	arch_info.axw_addr_start = address;
 
 	// mapping x address
@@ -485,7 +494,7 @@ void Preprocessor::AddressMapping() {
 	}
 
 	// for (int i = 0; i < data_info.x_h; i++) {
-	// 	for (int j = 0; j < data_info.x_w / CACHE_LINE_COUNT; j++)
+	// 	for (int j = 0; j < x_to_addr[i].size(); j++)
 	// 		cout<<hex<<x_to_addr[i][j]<<" ";
 	// 	cout<<endl;
 	// }
