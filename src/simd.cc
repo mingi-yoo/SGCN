@@ -23,8 +23,10 @@ SIMD::SIMD(int id, Memory* mem) {
 	ss.cur_row_idx = 0;
 	ss.cur_v_fold = 0;
 	ss.cnt = 0;
+	ss.nonzero_row = data_index[id].row - data_index[id].zero_row;
 
-	ss.past_f = -1;
+	ss.cur_bf = 1;
+	ss.write_urb = arch_info.urb;
 
 	ss.simd_end = false;
 }
@@ -33,13 +35,19 @@ SIMD::~SIMD() {}
 
 void SIMD::GetFeature(int f) {
 	if (f == 0) {
-		for (int i = 0; i < arch_info.urb; i++) {
+		for (int i = 0; i < ss.write_urb; i++) {
 			uint64_t address = GetAddress();
 			wq.push(address);
 			ss.cur_v_fold++;
 		}
 		ss.cur_v_fold = 0;
 		ss.cur_row_idx++;
+		if (ss.cur_row_idx == ss.nonzero_row) {
+			ss.cur_row_idx = 0;
+			ss.cur_bf++;
+			if (ss.cur_bf == arch_info.bf)
+				ss.write_urb = data_info.total_urb - (arch_info.urb * (arch_info.bf - 1));
+		}
 	}
 }
 

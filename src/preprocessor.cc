@@ -184,6 +184,7 @@ void Preprocessor::ReadData(string a_data, string xw_data) {
 	data_info.x_w = data_info.w_h;
 
 	// urb unit is cache line. (1 urb = read C(16) elements)
+	data_info.total_urb = ceil((float)data_info.x_w / CACHE_LINE_COUNT);
 	arch_info.urb = ceil((float)data_info.x_w / arch_info.bf / CACHE_LINE_COUNT);
 	// log feature width and urb
 	log_info.feature_length = data_info.w_w;
@@ -255,8 +256,9 @@ void Preprocessor::LAC() {
 			if (row_ptr_lac[i][j+1] == row_ptr_lac[i][j])
 				zero++;
 		}
+		data_index[i].row = row_ptr_lac[i].size() - 1;
 		data_index[i].zero_row = zero;
-		data_index[i].total_write = (row_ptr_lac[i].size() - 1 - zero) * (data_info.w_w / CACHE_LINE_COUNT);
+		data_index[i].total_write = (row_ptr_lac[i].size() - 1 - zero) * data_info.total_urb;
 		
 	}
 
@@ -358,8 +360,9 @@ void Preprocessor::Tiling() {
 					// if there is vertex that has no edge, count up the zero row value.
 					zero++;
 			}
+			data_index[i].row = row_ptr_lac[i].size() - 1;
 			data_index[i].zero_row = zero;
-			data_index[i].total_write = (row_ptr_tiled[i].size() - 1 - zero) * (data_info.w_w / CACHE_LINE_COUNT);
+			data_index[i].total_write = (row_ptr_tiled[i].size() - 1 - zero) * data_info.total_urb;
 		}
 
 		row_ptr.clear();
@@ -386,11 +389,10 @@ void Preprocessor::Tiling() {
 }
 
 void Preprocessor::TransXW() {
-	int unit = ceil((float)data_info.x_w / CACHE_LINE_COUNT);
-
 	if (arch_info.mode == X_CMP) {
+		data_info.tota_urb = ceil((float)data_info.x_w / arch_info.x_unit);
 		arch_info.urb = ceil((float)arch_info.x_unit / CACHE_LINE_COUNT);
-		arch_info.bf = ceil((float)data_info.x_w / arch_info.urb / CACHE_LINE_COUNT);
+		arch_info.bf = ceil((float)data_info.tota_urb / arch_info.urb);
 		for (int i = 0; i < data_info.x_h; i++) {
 			int count = ceil((float)arch_info.x_unit / 32);
 			for (int j = 1; j <= data_info.x_w; j++) {
@@ -411,6 +413,7 @@ void Preprocessor::TransXW() {
 		}
 	}
 	else if (arch_info.mode == MAT) {
+		int unit = ceil((float)data_info.x_w / CACHE_LINE_COUNT);
 		for (int i = 0; i < data_info.x_h; i++) {
 			for (int j = 0; j < unit; j++) {
 				x_to_addr[i].push_back(1);
@@ -467,12 +470,13 @@ void Preprocessor::AddressMapping() {
 
 	// mapping x address
 	address = arch_info.xw_ele_addr_start;
-	int unit = ceil((float)data_info.x_w/CACHE_LINE_COUNT);
 	for (int i = 0; i < arch_info.bf; i++) {
 		for (int j = 0; j < data_info.x_h; j++) {
 			for (int k = 0; k < arch_info.urb; k++) {
 				int row = j;
 				int col = i * arch_info.urb + k;
+				if (col == data_info.total_urb)
+					break;
 				if (x_to_addr[row][col] == 1)
 					x_to_addr[row][col]=address;
 				address += CACHE_LINE_BYTE;
@@ -496,6 +500,7 @@ void Preprocessor::PrintStatus() {
 	cout<<"Number of engines: "<<arch_info.n_of_engine<<endl;
 	cout<<"Bf: "<<arch_info.bf<<endl;
 	cout<<"Unit Read Block: "<<arch_info.urb<<endl;
+	cout<<"Total URB: "<<data_info.total_urb<<endl;
 	cout<<"Value Start Address: "<<hex<<arch_info.d_value_addr_start<<endl;
 	cout<<"Row Start Address: "<<hex<<arch_info.a_row_addr_start<<endl;
 	cout<<"Column Start Address: "<<hex<<arch_info.a_col_addr_start<<endl;

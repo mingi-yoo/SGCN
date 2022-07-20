@@ -8,12 +8,13 @@ using namespace std;
 
 struct SIMD_STAT {
 	uint64_t axw_addr_start;
+	int nonzero_row;
 	int cur_row_idx;
 	int cur_v_fold;
 
-	int cur_f;
+	int cur_bf;
+	int write_urb;
 
-	int past_f;
 	int cnt;
 
 	bool simd_end;
