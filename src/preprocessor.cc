@@ -431,6 +431,21 @@ void Preprocessor::TransXW() {
 			}
 		}
 	}
+	else if (arch_info.mode == CSR) {
+		for (int i = 0; i < data_info.x_h; i++) {
+			x_to_addr[i].push_back(1);
+			int x_acm = 0;
+			for (int j = 0; j < data_info.x_w; j++) {
+				if (xw[i][j] != 0)
+					x_acm++;
+			}
+			int block = ceil((float)x_acm / CACHE_LINE_COUNT);
+			for (int j = 0; j < block; j++) {
+				x_to_addr[i].push_back(1);
+			}
+			x_to_addr[i].push_back(x_acm);
+		}
+	}
 
 	// clear xw_mat vector
 	vector<vector<int>>().swap(xw);
@@ -481,19 +496,41 @@ void Preprocessor::AddressMapping() {
 
 	// mapping x address
 	address = arch_info.xw_ele_addr_start;
-	for (int i = 0; i < arch_info.bf; i++) {
-		for (int j = 0; j < data_info.x_h; j++) {
-			for (int k = 0; k < arch_info.urb; k++) {
-				int row = j;
-				int col = i * arch_info.urb + k;
-				if (col == data_info.total_urb)
-					break;
-				if (x_to_addr[row][col] == 1)
-					x_to_addr[row][col]=address;
-				address += CACHE_LINE_BYTE;
+	if (arch_info.mode == X_CMP || arch_info.x_mode == MAT) {
+		for (int i = 0; i < arch_info.bf; i++) {
+			for (int j = 0; j < data_info.x_h; j++) {
+				for (int k = 0; k < arch_info.urb; k++) {
+					int row = j;
+					int col = i * arch_info.urb + k;
+					if (col == data_info.total_urb)
+						break;
+					if (x_to_addr[row][col] == 1)
+						x_to_addr[row][col]=address;
+					address += CACHE_LINE_BYTE;
+				}
 			}
 		}
 	}
+	else if (arch_info.mode == CSR) {
+		for (int i = 1; i <= arch_info.x_h; i++) {
+			x_to_addr[i-1][0] = address;
+			if (i % CACHE_LINE_COUNT == 0)
+				address += CACHE_LINE_BYTE;
+		}
+		int x_acm = 0;
+		for (int i = 0; i < arch_info.x_h; i++) {
+			int cnt = x_to_addr[i].size() - 1;
+			for (int j = 1; j < cnt; j++) {
+				x_to_addr[i][j] = address;
+				address += CACHE_LINE_BYTE;
+			}
+			x_acm += x_to_addr[i][cnt];
+			x_to_addr[i].pop_back();
+			if (x_acm % CACHE_LINE_COUNT != 0)
+				address -= CACHE_LINE_BYTE;
+		}
+	}	
+	
 
 	// for (int i = 0; i < data_info.x_h; i++) {
 	// 	for (int j = 0; j < x_to_addr[i].size(); j++)
