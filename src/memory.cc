@@ -70,10 +70,7 @@ void Memory::PrintStats() {
 void Memory::ReadCompleteCallback(uint64_t address) {
 	uint64_t f_addr_start;
 
-	if (arch_info.mode == X_CMP || arch_info.mode == MAT || arch_info.mode == X_FULL_CMP)
-		f_addr_start = arch_info.xw_ele_addr_start;
-	else if (arch_info.mode == CSR)
-		f_addr_start = arch_info.xw_value_addr_start;
+	f_addr_start = arch_info.xw_ele_addr_start;
 
 	if (address >= arch_info.d_value_addr_start && address < f_addr_start) {
 		// Graph data

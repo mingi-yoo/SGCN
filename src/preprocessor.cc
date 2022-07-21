@@ -442,6 +442,7 @@ void Preprocessor::TransXW() {
 			int block = ceil((float)x_acm / CACHE_LINE_COUNT);
 			for (int j = 0; j < block; j++) {
 				x_to_addr[i].push_back(1);
+				x_to_addr[i].push_back(1);
 			}
 			x_to_addr[i].push_back(x_acm);
 		}
@@ -496,7 +497,7 @@ void Preprocessor::AddressMapping() {
 
 	// mapping x address
 	address = arch_info.xw_ele_addr_start;
-	if (arch_info.mode == X_CMP || arch_info.x_mode == MAT) {
+	if (arch_info.mode == X_CMP || arch_info.mode == MAT) {
 		for (int i = 0; i < arch_info.bf; i++) {
 			for (int j = 0; j < data_info.x_h; j++) {
 				for (int k = 0; k < arch_info.urb; k++) {
@@ -512,19 +513,33 @@ void Preprocessor::AddressMapping() {
 		}
 	}
 	else if (arch_info.mode == CSR) {
-		for (int i = 1; i <= arch_info.x_h; i++) {
+		// row ptr mapping
+		for (int i = 1; i <= data_info.x_h; i++) {
 			x_to_addr[i-1][0] = address;
 			if (i % CACHE_LINE_COUNT == 0)
 				address += CACHE_LINE_BYTE;
 		}
+		// col_idx mapping
 		int x_acm = 0;
-		for (int i = 0; i < arch_info.x_h; i++) {
-			int cnt = x_to_addr[i].size() - 1;
-			for (int j = 1; j < cnt; j++) {
-				x_to_addr[i][j] = address;
+		for (int i = 0; i < data_info.x_h; i++) {
+			int cnt = (x_to_addr[i].size() - 2) / 2;
+			for (int j = 0; j < cnt; j++) {
+				x_to_addr[i][j*2 + 1] = address;
 				address += CACHE_LINE_BYTE;
 			}
-			x_acm += x_to_addr[i][cnt];
+			x_acm += x_to_addr[i][x_to_addr[i].size()-1];
+			if (x_acm % CACHE_LINE_COUNT != 0)
+				address -= CACHE_LINE_BYTE;
+		}
+		// value mapping
+		x_acm = 0;
+		for (int i = 0; i < data_info.x_h; i++) {
+			int cnt = (x_to_addr[i].size() - 2) / 2;
+			for (int j = 0; j < cnt; j++) {
+				x_to_addr[i][j*2 + 2] = address;
+				address += CACHE_LINE_BYTE;
+			}
+			x_acm += x_to_addr[i][x_to_addr[i].size()-1];
 			x_to_addr[i].pop_back();
 			if (x_acm % CACHE_LINE_COUNT != 0)
 				address -= CACHE_LINE_BYTE;
