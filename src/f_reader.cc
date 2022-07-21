@@ -98,7 +98,7 @@ void FeatureReader::ConsumePendingQ(int id) {
 }
 
 void FeatureReader::ReadNext(int id) {
-	if (fq[id].size() >= 512 || !mem->WillAcceptTransaction())
+	if (fq[id].size() >= 256 || !mem->WillAcceptTransaction())
 		return;
 
 	if (frs[id].pq_read_need && !pq[id].empty())

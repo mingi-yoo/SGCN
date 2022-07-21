@@ -217,6 +217,8 @@ void Preprocessor::LAC() {
 	if (arch_info.lac_width == 0)
 		arch_info.lac_width = ceil((float)data_info.a_h / data_info.n_tiles / n);
 
+	cout<<"LAC WIDTH : "<<arch_info.lac_width<<endl;
+
 	// this process is next step of ReadData()
 	// so, the original(non-distributed) graph is stored in 0th index.
 	vector<int> row_ptr_origin = row_ptr[0];
