@@ -447,6 +447,18 @@ void Preprocessor::TransXW() {
 			x_to_addr[i].push_back(x_acm);
 		}
 	}
+	else if (arch_info.mode == X_FULL_CMP) {
+		for (int i = 0; i < arch_info.x_h; i++) {
+			int count = ceil((float)data_info.x_w / 32);
+			for (int j = 0; j < arch_info.x_w; j++) {
+				if (xw[i][j] != 0)
+					count++;
+			}
+			int block = ceil((float)count / CACHE_LINE_COUNT);
+			for (int j = 0; j < block; j++)
+				x_to_addr[i].push_back(1);
+		}
+	}
 
 	// clear xw_mat vector
 	vector<vector<int>>().swap(xw);
@@ -545,7 +557,14 @@ void Preprocessor::AddressMapping() {
 				address -= CACHE_LINE_BYTE;
 		}
 	}	
-	
+	else if (arch_info.mode == X_FULL_CMP) {
+		for (int i = 0; i < data_info.x_h; i++) {
+			for (int j = 0; j < x_to_addr[i].size(); j++) {
+				x_to_addr[i][j] = address;
+				
+			}
+		}
+	}
 
 	// for (int i = 0; i < data_info.x_h; i++) {
 	// 	for (int j = 0; j < x_to_addr[i].size(); j++)
