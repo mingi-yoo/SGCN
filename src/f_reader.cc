@@ -189,6 +189,18 @@ void FeatureReader::ReadNext(int id) {
 		}
 	}
 	else if (mode == X_FULL_CMP) {
+		if (frs[id].cur_f.cur_col_idx == 0) {
+			uint64_t f_addr = x_to_addr[frs[id].cur_f.dst][0];
+			if (!cah->Access(f_addr)) {
+				if (requested.find(f_addr) == requested.end()) {
+					requested.insert(f_addr);
+					mem->AddTransaction({f_addr, READ});
+				}
+				return;
+			}
+			else
+				frs[id].cur_f.cur_col_idx++;
+		}
 		uint64_t f_addr = x_to_addr[frs[id].cur_f.dst][frs[id].cur_f.cur_col_idx];
 		if (!cah->Access(f_addr) && (requested.find(f_addr) == requested.end())) {
 			requested.insert(f_addr);

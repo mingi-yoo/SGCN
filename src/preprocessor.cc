@@ -448,10 +448,10 @@ void Preprocessor::TransXW() {
 		}
 	}
 	else if (arch_info.mode == X_FULL_CMP) {
-		for (int i = 0; i < data_info_info.x_h; i++) {
+		for (int i = 0; i < data_info.x_h; i++) {
 			x_to_addr[i].push_back(1);
 			int count = ceil((float)data_info.x_w / 32);
-			for (int j = 0; j < data_info_info.x_w; j++) {
+			for (int j = 0; j < data_info.x_w; j++) {
 				if (xw[i][j] != 0)
 					count++;
 			}
