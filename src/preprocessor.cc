@@ -448,9 +448,10 @@ void Preprocessor::TransXW() {
 		}
 	}
 	else if (arch_info.mode == X_FULL_CMP) {
-		for (int i = 0; i < arch_info.x_h; i++) {
+		for (int i = 0; i < data_info_info.x_h; i++) {
+			x_to_addr[i].push_back(1);
 			int count = ceil((float)data_info.x_w / 32);
-			for (int j = 0; j < arch_info.x_w; j++) {
+			for (int j = 0; j < data_info_info.x_w; j++) {
 				if (xw[i][j] != 0)
 					count++;
 			}
@@ -504,9 +505,6 @@ void Preprocessor::AddressMapping() {
 
 	// xw, axw address
 	arch_info.xw_ele_addr_start = address;
-	address += (uint64_t)data_info.x_h * data_info.total_urb * CACHE_LINE_BYTE;
-	arch_info.axw_addr_start = address;
-
 	// mapping x address
 	address = arch_info.xw_ele_addr_start;
 	if (arch_info.mode == X_CMP || arch_info.mode == MAT) {
@@ -558,13 +556,21 @@ void Preprocessor::AddressMapping() {
 		}
 	}	
 	else if (arch_info.mode == X_FULL_CMP) {
+		int x_change = CACHE_LINE_COUNT / ceil((float)data_info.x_w / 32);
+		for (int i = 1; i <= data_info.x_h; i++) {
+			x_to_addr[i-1][0] = address;
+			if (i % x_change == 0)
+				address += CACHE_LINE_BYTE;
+		}
 		for (int i = 0; i < data_info.x_h; i++) {
 			for (int j = 0; j < x_to_addr[i].size(); j++) {
 				x_to_addr[i][j] = address;
-				
+				address += CACHE_LINE_BYTE;
 			}
 		}
 	}
+
+	arch_info.axw_addr_start = address;
 
 	// for (int i = 0; i < data_info.x_h; i++) {
 	// 	for (int j = 0; j < x_to_addr[i].size(); j++)
